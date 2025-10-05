@@ -1540,15 +1540,37 @@ static VkResult overlay_CreateSwapchainKHR(
    struct device_data *device_data = FIND(struct device_data, device);
    auto params = device_data->instance->params;
 
-   if (device_data->instance->params.vsync < 4) {
+   SPDLOG_DEBUG("Swapchain: vsync={}, minImageCount={}, imageArrayLayers={}", params.vsync, createInfo.minImageCount, createInfo.imageArrayLayers);
+   
+   if (device_data->instance->params.vsync < 7) {
       HUDElements.cur_present_mode = HUDElements.presentModes[params.vsync];
       createInfo.presentMode = HUDElements.cur_present_mode;
+      SPDLOG_DEBUG("Requested present mode: {}", HUDElements.presentModeMap[HUDElements.cur_present_mode]);
    } else {
       HUDElements.cur_present_mode = createInfo.presentMode;
+      SPDLOG_DEBUG("Using app-requested present mode");
    }
 
    struct instance_data *instance_data =
       FIND(struct instance_data, device_data->physical_device);
+
+   if (HUDElements.cur_present_mode == VK_PRESENT_MODE_FIFO_LATEST_READY_KHR) {
+      PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR fpGetSurfaceCapabilities =
+         (PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR) instance_data->vtable.GetInstanceProcAddr(instance_data->instance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
+      
+      if (fpGetSurfaceCapabilities != NULL) {
+         VkSurfaceCapabilitiesKHR surfaceCaps;
+         if (fpGetSurfaceCapabilities(device_data->physical_device, pCreateInfo->surface, &surfaceCaps) == VK_SUCCESS) {
+            uint32_t minRequired = std::max(3u, surfaceCaps.minImageCount);
+            uint32_t desired = std::max(pCreateInfo->minImageCount, minRequired);
+            if (surfaceCaps.maxImageCount > 0)
+               desired = std::min(desired, surfaceCaps.maxImageCount);
+            createInfo.minImageCount = desired;
+            SPDLOG_DEBUG("Adjusted minImageCount for FIFO Latest Ready: {} -> {} (device min={}, max={})", 
+               pCreateInfo->minImageCount, createInfo.minImageCount, surfaceCaps.minImageCount, surfaceCaps.maxImageCount);
+         }
+      }
+   }
 
    PFN_vkGetPhysicalDeviceSurfacePresentModesKHR fpGetPhysicalDeviceSurfacePresentModesKHR =
    (PFN_vkGetPhysicalDeviceSurfacePresentModesKHR) instance_data->vtable.GetInstanceProcAddr(instance_data->instance, "vkGetPhysicalDeviceSurfacePresentModesKHR");
@@ -1560,10 +1582,11 @@ static VkResult overlay_CreateSwapchainKHR(
 
       if (result == VK_SUCCESS) {
          presentModes.resize(presentModeCount);
+         SPDLOG_DEBUG("GPU supports {} present modes", presentModeCount);
          if (IsPresentModeSupported(HUDElements.cur_present_mode, presentModes))
-            SPDLOG_DEBUG("Present mode: {}", HUDElements.presentModeMap[HUDElements.cur_present_mode]);
+            SPDLOG_DEBUG("Present mode: {} - SUPPORTED", HUDElements.presentModeMap[HUDElements.cur_present_mode]);
          else {
-            SPDLOG_DEBUG("Present mode is not supported: {}", HUDElements.presentModeMap[HUDElements.cur_present_mode]);
+            SPDLOG_DEBUG("Present mode: {} - NOT SUPPORTED, falling back to FIFO", HUDElements.presentModeMap[HUDElements.cur_present_mode]);
             HUDElements.cur_present_mode = VK_PRESENT_MODE_FIFO_KHR;
             createInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
          }

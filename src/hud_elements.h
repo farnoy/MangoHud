@@ -14,6 +14,10 @@
 #include "shell.h"
 #include "gpu.h"
 
+#ifndef VK_PRESENT_MODE_FIFO_LATEST_READY_KHR
+#define VK_PRESENT_MODE_FIFO_LATEST_READY_KHR ((VkPresentModeKHR)1000361000)
+#endif
+
 struct Function {
     std::function<void()> run;  // Using std::function instead of a raw function pointer for more flexibility
     std::string name;
@@ -153,19 +157,21 @@ class HudElements{
 
         void TextColored(ImVec4 col, const char *fmt, ...);
 
-        std::array<VkPresentModeKHR, 6> presentModes = {
+        std::array<VkPresentModeKHR, 7> presentModes = {
             VK_PRESENT_MODE_FIFO_RELAXED_KHR,
             VK_PRESENT_MODE_IMMEDIATE_KHR,
             VK_PRESENT_MODE_MAILBOX_KHR,
             VK_PRESENT_MODE_FIFO_KHR,
             VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR,
-            VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR};
+            VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR,
+            VK_PRESENT_MODE_FIFO_LATEST_READY_KHR};
 
         std::map<VkPresentModeKHR, std::string> presentModeMap = {
             {VK_PRESENT_MODE_IMMEDIATE_KHR, "IMMEDIATE"},
             {VK_PRESENT_MODE_MAILBOX_KHR, "MAILBOX"},
             {VK_PRESENT_MODE_FIFO_KHR, "FIFO"},
             {VK_PRESENT_MODE_FIFO_RELAXED_KHR, "FIFO Relaxed"},
+            {VK_PRESENT_MODE_FIFO_LATEST_READY_KHR, "FIFO Latest Ready"},
             {VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR, "DEMAND"},
             {VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR, "CONTINUOUS"}
         };
