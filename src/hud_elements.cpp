@@ -1107,8 +1107,9 @@ void HudElements::resolution(){
 void HudElements::show_fps_limit(){
     if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_show_fps_limit]){
         int fps = 0;
-        if (fps_limit_stats.targetFrameTime.count())
-            fps = 1000000000 / fps_limit_stats.targetFrameTime.count();
+        auto target = fps_limit_stats.targetFrameTime.load(std::memory_order_relaxed);
+        if (target.count())
+            fps = 1000000000 / target.count();
         ImguiNextColumnFirstItem();
         ImGui::PushFont(HUDElements.sw_stats->font_secondary);
         const char* method = fps_limit_stats.method == FPS_LIMIT_METHOD_EARLY ? "early" : "late";

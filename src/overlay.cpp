@@ -101,12 +101,12 @@ void init_spdlog()
 }
 
 void FpsLimiter(struct fps_limit& stats){
-   stats.sleepTime = stats.targetFrameTime - (stats.frameStart - stats.frameEnd);
+   stats.sleepTime = stats.targetFrameTime.load(std::memory_order_relaxed) - (stats.frameStart - stats.frameEnd);
    if (stats.sleepTime > stats.frameOverhead) {
       auto adjustedSleep = stats.sleepTime - stats.frameOverhead;
       this_thread::sleep_for(adjustedSleep);
       stats.frameOverhead = ((Clock::now() - stats.frameStart) - adjustedSleep);
-      if (stats.frameOverhead > stats.targetFrameTime / 2)
+      if (stats.frameOverhead > stats.targetFrameTime.load(std::memory_order_relaxed) / 2)
          stats.frameOverhead = Clock::duration(0);
    }
 }

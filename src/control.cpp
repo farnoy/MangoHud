@@ -35,6 +35,21 @@ static void parse_command(overlay_params &params,
       }
    } else if (!strncmp(cmd, "fcat", cmdlen)) {
       params.enabled[OVERLAY_PARAM_ENABLED_fcat] = !params.enabled[OVERLAY_PARAM_ENABLED_fcat];
+   } else if (!strncmp(cmd, "set_fps_limit", cmdlen)) {
+      if (param && param[0]) {
+         char *endptr;
+         float fps = strtof(param, &endptr);
+
+         if (endptr != param && fps >= 0) {
+            if (fps > 0) {
+               using namespace std::chrono;
+               fps_limit_stats.targetFrameTime.store(
+                  duration_cast<Clock::duration>(duration<double>(1) / fps), std::memory_order_relaxed);
+            } else {
+               fps_limit_stats.targetFrameTime.store(Clock::duration{}, std::memory_order_relaxed);
+            }
+         }
+      }
    }
 }
 

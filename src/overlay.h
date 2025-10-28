@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <vector>
 #include <deque>
+#include <atomic>
 #include <imgui.h>
 #include "imgui_internal.h"
 #include "overlay_params.h"
@@ -79,7 +80,7 @@ struct swapchain_stats {
 struct fps_limit {
    Clock::time_point frameStart;
    Clock::time_point frameEnd;
-   Clock::duration targetFrameTime;
+   std::atomic<Clock::duration> targetFrameTime;
    Clock::duration frameOverhead;
    Clock::duration sleepTime;
    enum fps_limit_method method;

@@ -47,13 +47,13 @@ void check_keybinds(struct overlay_params& params){
       for (size_t i = 0; i < real_params->fps_limit.size(); i++){
          float fps_limit = real_params->fps_limit[i];
          // current fps limit equals vector entry, use next / first
-         if((fps_limit > 0 && fps_limit_stats.targetFrameTime == std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(1) / real_params->fps_limit[i]))
-               || (fps_limit == 0 && fps_limit_stats.targetFrameTime == fps_limit_stats.targetFrameTime.zero())) {
+         if((fps_limit > 0 && fps_limit_stats.targetFrameTime.load(std::memory_order_relaxed) == std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(1) / real_params->fps_limit[i]))
+               || (fps_limit == 0 && fps_limit_stats.targetFrameTime.load(std::memory_order_relaxed) == Clock::duration{})) {
             float newFpsLimit = i+1 == real_params->fps_limit.size() ? real_params->fps_limit[0] : real_params->fps_limit[i+1];
             if(newFpsLimit > 0) {
-               fps_limit_stats.targetFrameTime = std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(1) / newFpsLimit);
+               fps_limit_stats.targetFrameTime.store(std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(1) / newFpsLimit), std::memory_order_relaxed);
             } else {
-               fps_limit_stats.targetFrameTime = {};
+               fps_limit_stats.targetFrameTime.store(Clock::duration{}, std::memory_order_relaxed);
             }
             break;
          }

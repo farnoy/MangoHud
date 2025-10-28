@@ -1641,7 +1641,7 @@ static VkResult overlay_QueuePresentKHR(
     const VkPresentInfoKHR*                     pPresentInfo)
 {
    using namespace std::chrono_literals;
-   if (fps_limit_stats.targetFrameTime > 0s && fps_limit_stats.method == FPS_LIMIT_METHOD_EARLY){
+   if (fps_limit_stats.targetFrameTime.load(std::memory_order_relaxed) > 0s && fps_limit_stats.method == FPS_LIMIT_METHOD_EARLY){
       fps_limit_stats.frameStart = Clock::now();
       FpsLimiter(fps_limit_stats);
       fps_limit_stats.frameEnd = Clock::now();
@@ -1689,7 +1689,7 @@ static VkResult overlay_QueuePresentKHR(
          result = chain_result;
    }
 
-   if (fps_limit_stats.targetFrameTime > 0s && fps_limit_stats.method == FPS_LIMIT_METHOD_LATE){
+   if (fps_limit_stats.targetFrameTime.load(std::memory_order_relaxed) > 0s && fps_limit_stats.method == FPS_LIMIT_METHOD_LATE){
       fps_limit_stats.frameStart = Clock::now();
       FpsLimiter(fps_limit_stats);
       fps_limit_stats.frameEnd = Clock::now();
