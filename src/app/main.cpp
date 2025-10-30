@@ -347,7 +347,7 @@ int main(int, char**)
                     PropModeReplace, (unsigned char *)&value, 1);
     // Main loop
     while (!glfwWindowShouldClose(window)){
-        check_keybinds(params);
+        check_keybinds(params, &control_client);
 
         if (!get_params()->no_display){
             if (mangoapp_paused){

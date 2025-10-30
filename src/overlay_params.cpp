@@ -905,11 +905,14 @@ static std::string verify_pci_dev(std::string pci_dev) {
 
 void
 parse_overlay_config(struct overlay_params *params,
-                  const char *env, bool use_existing_preset)
+                  const char *env, bool use_existing_preset, int* control_client)
 {
    SPDLOG_DEBUG("Version: {}", MANGOHUD_VERSION);
    std::vector<int> default_preset = {-1, 0, 1, 2, 3, 4};
    auto preset = std::move(params->preset);
+   // Save old control socket info for comparison (don't close yet - we may reuse it!)
+   int old_control_fd = params->control;
+   std::string old_control_path = params->control_path;
    *params = {};
    params->preset = use_existing_preset ? std::move(preset) : default_preset;
    set_param_defaults(params);
@@ -986,6 +989,47 @@ parse_overlay_config(struct overlay_params *params,
    if (env && read_cfg) {
       HUDElements.ordered_functions.clear();
       parse_overlay_env(params, env, true);
+   }
+
+   // Store control path and handle socket preservation
+   auto control_it = params->options.find("control");
+   if (control_it != params->options.end()) {
+      // Parse the control path (do %p replacement like parse_control does)
+      std::string path = control_it->second;
+      size_t npos = path.find("%p");
+      if (npos != std::string::npos)
+         path.replace(npos, 2, std::to_string(getpid()));
+      params->control_path = path;
+
+      // If path unchanged and old socket was valid, preserve old socket
+      if (params->control_path == old_control_path && old_control_fd >= 0) {
+         // Close the newly created socket (we don't need it)
+         if (params->control >= 0 && params->control != old_control_fd) {
+            os_socket_close(params->control);
+         }
+         // Restore the old socket (which is still open!)
+         params->control = old_control_fd;
+         SPDLOG_DEBUG("Preserved control socket: {}", params->control_path);
+      } else {
+         // Socket path changed or newly enabled
+         // Close old socket if it was open
+         if (old_control_fd >= 0) {
+            os_socket_close(old_control_fd);
+         }
+         // Close orphaned client connection if path changed
+         if (!old_control_path.empty() && control_client && *control_client >= 0) {
+            os_socket_close(*control_client);
+            *control_client = -1;
+            SPDLOG_DEBUG("Closed client socket due to control path change");
+         }
+         SPDLOG_DEBUG("Control socket changed or new: {}", params->control_path);
+      }
+   } else {
+      // No control option set, close old socket if it was open
+      if (old_control_fd >= 0) {
+         os_socket_close(old_control_fd);
+      }
+      params->control_path = "";
    }
 
    // If fps_only param is enabled disable legacy_layout
